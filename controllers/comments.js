@@ -4,7 +4,6 @@ const jwt = require('jsonwebtoken');
 exports.init = function (db) {
     return {
         createComment: (req, res) => {
-            console.log("req.file", req.file)
             let decoded = jwt.verify(req.headers.authorization.split(' ')[1], process.env.SECRET_KEY);
             const id_user = decoded.id_user;
             const id_post = req.params.id_post
@@ -15,8 +14,9 @@ exports.init = function (db) {
                     console.log(errTwo.sqlMessage);
                     res.send(errTwo.sqlMessage);
                 } else {
-                    res.send(rowsTwo)
-
+                    db.query(`SELECT id_comment, id_user, id_post, content FROM COMMENT WHERE id_comment=${rowsTwo.insertId}`, function(er, rs, f){
+                        res.send(rs[0])
+                    })
                 }
             })
         },

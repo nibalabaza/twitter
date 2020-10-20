@@ -4,15 +4,15 @@ const jwt = require('jsonwebtoken');
 
 //search the index of the post by the id of the post
 function post_id_to_post_index(posts, id) {
-    console.log("posts", posts)
-    console.log("id", id)
+    // console.log("posts", posts)
+    // console.log("id", id)
     let res;
     posts.forEach((post, i) => {
-        if (post.id_post === id) {
+        if (post.id_post == id) {
             res = i
         }
     })
-    console.log("res", res)
+    // console.log("res", res)
     return res
 }
 
@@ -23,17 +23,18 @@ exports.init = function (bdd) {
             let decoded = jwt.verify(req.headers.authorization.split(' ')[1], process.env.SECRET_KEY);
             const id_follower = decoded.id_user;
             // here we construct the col in db that doesn't exist 
-            bdd.query(`SELECT USER.id_user, user.pseudo, user.name, user.avatar, IF(f.id_user, true, false) AS is_followed
+            bdd.query(`SELECT USER.id_user, USER.pseudo, USER.name, USER.avatar, IF(f.id_user, true, false) AS is_followed
             FROM USER LEFT JOIN
              (SELECT * FROM Follow
               RIGHT JOIN USER
               ON USER.id_user = Follow.id_followed
               WHERE id_follower = ${id_follower}) f ON USER.id_user = f.id_user`,
                 function (err, result, fields) {
-                    if (!err)
+                    if (!err) {
                         res.send(result);
-                    else
+                    } else {
                         res.send(err);
+                    }
                 })
         },
 
@@ -41,7 +42,7 @@ exports.init = function (bdd) {
 
             try {
                 jwt.verify(req.headers.authorization.split(' ')[1], process.env.SECRET_KEY)
-                bdd.query(`SELECT pseudo, name FROM user WHERE pseudo = '${req.params.pseudo}'`, function (err, result) {
+                bdd.query(`SELECT pseudo, name FROM USER WHERE pseudo = '${req.params.pseudo}'`, function (err, result) {
                     if (!err)
                         res.send(result);
                     else
@@ -54,6 +55,7 @@ exports.init = function (bdd) {
         },
 
         follow: function (req, res) {
+           
             try {
                 const id_followed = req.params.id_user //this comes from the parameter of the route
                 let decoded = jwt.verify(req.headers.authorization.split(' ')[1], process.env.SECRET_KEY);
@@ -96,32 +98,45 @@ exports.init = function (bdd) {
             try {
                 let decoded = jwt.verify(req.headers.authorization.split(' ')[1], process.env.SECRET_KEY);
                 const id_user = decoded.id_user;
-                let selectPosts = `SELECT id_followed, POST.id_post, POST.content_post, POST.img_post, POST.date_post
+                let selectPosts = `SELECT id_followed, POST.id_post, POST.content_post, POST.img_post, POST.date_post, POST.id_user
                 FROM Follow
-                INNER JOIN post ON id_followed = id_user
+                INNER JOIN POST ON id_followed = id_user
                 WHERE id_follower = ${id_user}
-                `
+                ORDER BY POST.date_post ASC`
+                
                 bdd.query(selectPosts,
                     function (err, result) {
                         //another request to see my posts
                         if (!err) {
-                            let myPost = `SELECT POST.id_post, POST.content_post, POST.img_post, POST.date_post
-                        FROM POST WHERE id_user = ${id_user}`
+                            let myPost = `SELECT POST.id_post, POST.content_post, POST.img_post, POST.date_post, POST.id_user
+                        FROM POST WHERE id_user = ${id_user}
+                        ORDER BY POST.date_post ASC`
                             bdd.query(myPost, function (errTwo, resultTwo) {
                                 if (errTwo) {
                                     res.status(500).send(errTwo)
                                 } else {
                                     let posts = [...resultTwo, ...result]
+                                    if (!posts.length){
+                                        res.send([])
+                                        return 
+                                    } 
                                     const reactionQuery = `SELECT * FROM COMMENT`
                                     bdd.query(reactionQuery, function (errThree, resultThree) {
                                         if (errThree) {
                                             res.status(500).send(errThree)
                                         } else {
                                             resultThree.forEach(comment => {
+                                                console.log("comment.content", comment.content)
                                                 const postIndex = post_id_to_post_index(posts, comment.id_post) //the index of the post whose id in the comment object
+                                                console.log("postIndex", postIndex)
+                                                if(postIndex !== undefined){
                                                 posts[postIndex].comments ?
                                                     posts[postIndex].comments.push(comment) :
                                                     posts[postIndex].comments = [comment] // if there is no comment before, create the key comment and put the comment
+                                                }
+                                                else{
+                                                    console.log("postIndex", postIndex)
+                                                }
                                             })
                                         }
                                         res.send(posts) // coller 2 array ensemble
@@ -141,10 +156,10 @@ exports.init = function (bdd) {
         login: function (req, res) {
             // console.log("login")
             // console.log("bdd", bdd.query)
-            console.log(req.body.username)
-            bdd.query('SELECT * FROM user WHERE email= ?', [req.body.email, req.body.password],
+            // console.log(req.body.username)
+            bdd.query('SELECT * FROM USER WHERE email= ?', [req.body.email, req.body.password],
                 function (err, users, fields) {
-                    console.log(users.length)
+                    // console.log(users.length)
                     if (!users.length) {
                         console.log('no users found')
                         res.status(404).send('no user found')
@@ -169,7 +184,7 @@ exports.init = function (bdd) {
         register: function (req, res) {
             bcrypt.hash(req.body.password, 10, function (err, hash) {
                 if (!err) {
-                    bdd.query(`INSERT INTO user (name, pseudo, email,  password, avatar) VALUES ('${req.body.name}', '${req.body.pseudo}', '${req.body.email}', '${hash}', '${req.body.avatar}')`, [],
+                    bdd.query(`INSERT INTO USER (name, pseudo, email,  password, avatar) VALUES ('${req.body.name}', '${req.body.pseudo}', '${req.body.email}', '${hash}', '${req.body.avatar}')`, [],
                         function (err, result, fields) {
                             if (!err)
                                 res.send(result);

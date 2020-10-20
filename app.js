@@ -7,6 +7,7 @@ const mysql = require('mysql');
 const app = express();
 router = express.Router();
 const dotenv = require('dotenv');
+const util = require('util')
 
 // app.use(dotenv.config());
 var port = process.env.PORT || 3001;
@@ -23,6 +24,8 @@ app.use(express.static("uploads"))
 const bdd = require("./model/database");
 const user = require('./routes/user').init(bdd)
 const post = require("./routes/post").init(bdd);
+
+bdd.q = util.promisify(bdd.query)//tranfform the methode query into promise
 
 app.use("/user", user);
 app.use("/post", post);

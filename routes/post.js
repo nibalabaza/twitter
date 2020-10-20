@@ -41,8 +41,10 @@ router.post('/create-post', upload.single("postimg"), function(req, res, next){
 // router.post('/create-post', postController.createPost);
 
 
+router.delete('/:id_post', postController.delete_post)
 router.post('/:id_post/comments',CommentsController.createComment)
 router.post('/:id_post/reactions', postController.createPostReaction)
+router.get('/:id_post/reactions', postController.getPostReactions)
 router.post('/comments/:id_comment/reactions',CommentsController.createCommentReaction)
  return router ; 
 }
